@@ -12,6 +12,7 @@ import os
 from utils import find_word
 import sqlite3 as sq
 
+logger.add("debug.json", format="{time} {level} {message}", level="DEBUG", rotation="5 MB", compression="zip", serialize=True)
 # auth
 def get_env(name, message, cast=str):
     if name in os.environ:
@@ -33,8 +34,8 @@ client = TelegramClient(StringSession(sesrt), api_id, api_hash)
 #await client(JoinChannelRequest("ChatWarsDigest"))
 #ent = await client.get_entity("ChatWarsDigest")
 
-#@client.on(events.NewMessage(chats=(['ChatWarsDigest'])))
-@client.on(events.NewMessage(chats=(['kurashh'])))
+@client.on(events.NewMessage(chats=(['ChatWarsDigest'])))
+#@client.on(events.NewMessage(chats=(['kurashh'])))
 async def main(event):
     new_msg = event.message.message
     if "была успешно атакована" in new_msg:
@@ -54,26 +55,36 @@ async def main(event):
         #NonDef GI
         nondef_msg = event.message.date.strftime("%D\n%H:%M\n")
         nondef_msg += "Дефали и не битые:\n"
-        non_def_gu_arr = arr[-1].split(', ')
+        def_gu_arr = arr[-1].split(', ')
         cur = con.cursor()
         cur.execute('''CREATE TABLE IF NOT EXISTS defenders (guild_name text, date text);''')
         cur.execute('''CREATE TABLE IF NOT EXISTS percents (gi_name  TEXT, count_of_defs  INTEGER, count_of_battles  INTEGER, percentage  INTEGER);''')
         global battles_counter 
-        for gi_name in non_def_gu_arr:
+        for gi_name in def_gu_arr:
             cur.execute(f"INSERT INTO defenders VALUES(\'{gi_name}\', datetime('now', 'localtime'))")
 
-        for gi_name in non_def_gu_arr:
-            #logger.debug(gi_name)
-            cur.execute(f"INSERT INTO percents VALUES(\'{gi_name}\',(SELECT count (guild_name) as counter from defenders WHERE guild_name = \'{gi_name}\'),{battles_counter},NULL);")
+        for gi_name in def_gu_arr:
+            cur.execute(f"SELECT * FROM percents WHERE gi_name = \'{gi_name}\'")
+            raw = cur.fetchall()
+            if not raw:
+                logger.debug(f"{gi_name} not found in percents table, adding!")
+                cur.execute(f"INSERT INTO percents VALUES(\'{gi_name}\',(SELECT count (guild_name) as counter from defenders WHERE guild_name = \'{gi_name}\'),{battles_counter},NULL);")
+            else:
+                logger.info(f"{gi_name} was found, updating!")
+                cur.execute(f"""UPDATE percents set count_of_defs = (SELECT count (guild_name) as counter from defenders WHERE guild_name = \'{gi_name}\'), count_of_battles = {battles_counter} WHERE gi_name = \'{gi_name}\';""")
+                cur.execute(f"""SELECT count_of_battles, count_of_defs from percents WHERE gi_name = \'{gi_name}\';""")
+                resp = cur.fetchall()
+                count_of_battles = resp[0][1]
+                count_of_defs = resp[0][0]
+                formula = (count_of_battles/count_of_defs)*100
+                cur.execute(f"""UPDATE percents set percentage = {str(formula)} WHERE gi_name = \'{gi_name}\';""")
+                logger.info(f"{gi_name} percents was updated to {formula}")
 
+
+
+        await client.send_message('kurashh',f"{battles_counter}th battle was played!")
         battles_counter += 1
-        #formula = int((count_on_defs/count_of_days)*100)
-        """
-        for nd in arr[defenders_arr+2:]:
-            nondef_msg += nd
-        #await client.send_message('vaarvind',nondef_msg)
-        await client.send_message('kurashh',nondef_msg)
-        """
+        #formula = (count_of_battles/count_of_defs)*100
         await client.send_message('kurashh',"Defenders was scrapped to DB!")
     else:
         pass
@@ -102,7 +113,6 @@ async def manager(event):
         logger.debug(find_word(new_msg))
         #logger.debug(new_msg)
         print("Castle!")
-    #select * from defenders where guild_name = "🖤DEF";
 """
 
 client.start()
