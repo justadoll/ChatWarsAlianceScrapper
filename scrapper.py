@@ -7,35 +7,24 @@ from telethon.tl.types import PeerUser
 
 import asyncio
 from loguru import logger
-from time import sleep
-import os
 from utils import find_word
+from environs import Env
 import sqlite3 as sq
 
+env = Env()
+env.read_env()
 logger.add("debug.json", format="{time} {level} {message}", level="DEBUG", rotation="5 MB", compression="zip", serialize=True)
-# auth
-def get_env(name, message, cast=str):
-    if name in os.environ:
-        return cast(os.environ[name])
-    while True:
-        value = input(message)
-        try:
-            return cast(value)
-        except ValueError as e:
-            print(e, file=sys.stderr)
-            sleep(1)
 
-api_id = get_env('api_id', 'Enter your API ID: ', int)
-api_hash = get_env('api_hash', 'Enter your API HASH: ')
-sesrt = get_env('sesrt', "Enter string session: ")
-battles_counter = get_env('battles_counter', "Enter battles_counter: ", int)
+api_id = env.int('API_ID')
+api_hash = env.str('API_HASH')
+sesrt = env.str('SESTR')
+battles_counter = env.int('BATTLE_COUNTER')
 
 client = TelegramClient(StringSession(sesrt), api_id, api_hash)
 #await client(JoinChannelRequest("ChatWarsDigest"))
 #ent = await client.get_entity("ChatWarsDigest")
 
 @client.on(events.NewMessage(chats=(['ChatWarsDigest'])))
-#@client.on(events.NewMessage(chats=(['kurashh'])))
 async def main(event):
     new_msg = event.message.message
     if "была успешно атакована" in new_msg:
@@ -50,8 +39,7 @@ async def main(event):
         defenders_arr = arr.index('')
         for d in arr[1:defenders_arr]:
             def_msg += d
-        #await client.send_message("vaarvind", def_msg)
-        #await client.send_message("kurashh", def_msg)
+
         #NonDef GI
         nondef_msg = event.message.date.strftime("%D\n%H:%M\n")
         nondef_msg += "Дефали и не битые:\n"
@@ -84,15 +72,13 @@ async def main(event):
 
         await client.send_message('kurashh',f"{battles_counter}th battle was played!")
         battles_counter += 1
-        #formula = (count_of_battles/count_of_defs)*100
         await client.send_message('kurashh',"Defenders was scrapped to DB!")
     else:
         pass
 
-"""
 @client.on(events.NewMessage())
 async def manager(event):
-    castles_emoji = ["🌹", "🖤","☘️","🐢","🦇","🍁","🍆"]
+    #castles_emoji = ["🌹", "🖤","☘️","🐢","🦇","🍁","🍆"]
     new_msg = event.message.message
     cur = con.cursor()
     if new_msg.startswith('/show_all'):
@@ -112,8 +98,6 @@ async def manager(event):
     else:
         logger.debug(find_word(new_msg))
         #logger.debug(new_msg)
-        print("Castle!")
-"""
 
 client.start()
 userbot_info = client(GetFullUserRequest('me'))

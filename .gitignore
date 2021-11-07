@@ -1,3 +1,4 @@
 .main.py.swp
 __pycache__/
-setenv.sh
+.env
+debug.json

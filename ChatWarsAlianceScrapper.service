@@ -1,0 +1,15 @@
+Unit]
+Description=ChatWarsAlianceScrapper bot
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=Simple
+Restart=always
+RestartSec=1
+User=kurassh
+WorkingDirectory=/home/kurassh/bots/ChatWarsAlianceScrapper
+ExecStart=/usr/bin/python3 /home/kurassh/bots/ChatWarsAlianceScrapper/bot.py
+
+[Install]
+WantedBy=multi-user.target
